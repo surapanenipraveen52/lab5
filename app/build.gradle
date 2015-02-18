@@ -35,4 +35,6 @@ dependencies {
     compile files('libs/json-simple-1.1.jar')
     compile files('libs/fluent-hc-4.3.4.jar')
     compile files('libs/httpcore-4.3.2.jar')
+    compile files('libs/httpclient-4.3.4.jar')
+    compile files('libs/commons-codec-1.6.jar')
 }

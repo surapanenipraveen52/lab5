@@ -1,7 +1,9 @@
 package com.example.praveen.qa;
 
+import android.os.AsyncTask;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.util.Base64;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -11,12 +13,18 @@ import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
 import org.apache.http.client.fluent.Executor;
-import org.apache.http.client.fluent.Request;
-//import org.apache.http.entity.ContentType;
-import org.apache.http.entity.ContentType;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.util.EntityUtils;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
 
 
 import java.net.URI;
@@ -51,25 +59,36 @@ public class MainActivity extends ActionBarActivity {
                 questionJson.put("evidenceRequest",evidenceRequest);
                 JSONObject postData = new JSONObject();
                 postData.put("question",questionJson);
-                TextView answer=(TextView) findViewById(R.id.answer);
-                answer.setText(postData.toString());
-                try {
-                    Executor executor = Executor.newInstance().auth(username, password);
-                    URI serviceURI = new URI(baseURL+ "/v1/question/"+"healthcare").normalize();
-                    String t= executor.execute(Request.Post(serviceURI)
-                                    .addHeader("Accept", "application/json")
-                                    .addHeader("X-SyncTimeout", "30")
-                                    .bodyString(postData.toString(), ContentType.APPLICATION_JSON)
-                    ).returnContent().asString();
-
-            }catch (Exception e) {
-                    answer.setText(e.getMessage());
+                String json=null;
+                System.out.println(getAnswer(postData.toString(), null));
+               /* try  {
+                    HttpClient httpClient = new DefaultHttpClient();
+                    HttpPost request = new HttpPost(baseURL+ "/v1/question/healthcare");
+                    StringEntity params = new StringEntity(postData.toString());
+                    request.addHeader("content-type", "application/json");
+                    request.addHeader("Accept", "application/json");
+                    request.addHeader("X-SyncTimeout", "30");
+                    request.addHeader("Authorization", encodes);
+                    request.setEntity(params);
+                    System.out.println("hi");
+                    HttpResponse result = httpClient.execute(request);
+                    System.out.println("hi2");
+                    System.out.println(result.getEntity());
+                    json = EntityUtils.toString(result.getEntity(), "UTF-8");
                 }
-
-
+                catch (Exception e) {
+                    e.printStackTrace();
+                }*/
             }});
     }
-
+    private String getAnswer (String question, String dataSet) {
+       getAnswerASYNC task = new getAnswerASYNC();
+        String[] data=new String[2];
+        data[0]=question;
+        data[1]=dataSet;
+       task.execute(data);
+       return "pk";
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -92,4 +111,46 @@ public class MainActivity extends ActionBarActivity {
 
         return super.onOptionsItemSelected(item);
     }
-}
+    private class getAnswerASYNC extends AsyncTask<String, Void, String> {
+        @Override
+        protected String doInBackground(String... question) {
+            String encodes="Basic MmFmMDhkMzUtOWMzNy00YmRkLWIwYzItZmM4NGRhOGJkMTY3OlY5Q2dGWVpYdFo4QQ==";
+            String baseURL = "https://gateway.watsonplatform.net/question-and-answer-beta/api";
+            String json="No Answer";
+            try  {
+                HttpClient httpClient = new DefaultHttpClient();
+                HttpPost request = new HttpPost(baseURL+ "/v1/question/healthcare");
+                StringEntity params = new StringEntity(question[0]);
+                request.addHeader("content-type", "application/json");
+                request.addHeader("Accept", "application/json");
+                request.addHeader("X-SyncTimeout", "30");
+                request.addHeader("Authorization", encodes);
+                request.setEntity(params);
+                System.out.println("hi");
+                HttpResponse result = httpClient.execute(request);
+                System.out.println("hi2");
+                json = EntityUtils.toString(result.getEntity(), "UTF-8");
+            }
+            catch (Exception e) {
+                e.printStackTrace();
+            }
+            return json;
+        }
+        @Override
+        protected void onPostExecute(String answer) {
+            try {
+
+                JSONArray res = (JSONArray) new JSONParser().parse(answer);
+                JSONObject pipelineOne = (JSONObject) res.get(0);
+                JSONObject question = (JSONObject) pipelineOne.get("question");
+                JSONArray answers = (JSONArray) question.get("evidencelist");
+                JSONObject answerOne = (JSONObject) answers.get(0);
+                System.out.println(answerOne.get("text").toString());
+                TextView answerView=(TextView) findViewById(R.id.answer);
+                answerView.setText(answerOne.get("text").toString());
+            }catch (Exception e){
+
+            }
+        }
+        }
+    }
